@@ -70,7 +70,6 @@ def calculate_snr(B_t, p_t, d_0, K_0, M, N, passos, shadowing, cluster):
     SNR = np.zeros(cluster)
     SNR_final = []
     
-    
     #Fazendo o Handover
     for i in range(passos):
         for j in range(M):
@@ -84,7 +83,6 @@ def calculate_snr(B_t, p_t, d_0, K_0, M, N, passos, shadowing, cluster):
         SNR_sum = np.sum(SNR)
         SNR_final.append(SNR_sum)
     return SNR_final
-
 
 def calculate_capacity(B_t, p_t, d_0, K, M, N, passos, shadowing, cluster):
     SNR = calculate_snr(B_t, p_t, d_0, K, M, N, passos, shadowing, cluster)

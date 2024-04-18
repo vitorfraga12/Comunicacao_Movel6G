@@ -19,6 +19,7 @@ def distribuir_APs(M):
 
     return coordenadas_APs
 
+
 # Função que gera a distância entre a UE e a AP
 def dAPUE(x_coord, y_coord, M):
   dAPUE = np.linalg.norm(np.array([x_coord, y_coord]) - M)
@@ -53,7 +54,8 @@ def pot_rec(pot_trans, dist, d_0, shadowing):
     return pot_rec_result # [LINEAR]
 
 
-def calculate_snr(B_t, p_t, d_0, K_0, M, N, passos, shadowing, cluster):
+def calculate_snr(B_t, p_t, d_0, K_0, M, N, passos, shadowing):
+
     #UE irá se mover metro por metro e irá iniciar do ponto (0, 500) e irá até (1000, 500)
     x_coord = np.zeros(passos)
     y_coord = np.zeros(passos)
@@ -67,42 +69,32 @@ def calculate_snr(B_t, p_t, d_0, K_0, M, N, passos, shadowing, cluster):
     distancia = np.zeros(M)
     path_g = np.zeros(M)
     power_rec = np.zeros(passos)
-    SNR = np.zeros(cluster)
-    SNR_final = []
-    
-    
+    SNR = np.zeros(passos)
+
     #Fazendo o Handover
     for i in range(passos):
         for j in range(M):
             distancia[j] = dAPUE(x_coord[i], y_coord[i], ap_coord[j])
             path_g[j] = path_gain(distancia[j], shadowing[i])
-        j_ = np.argsort(path_g)[-cluster:][::-1]
-        for k in range(len(j_) ):
-            indice = j_[k]
-            power_rec[k] = pot_rec(p_t, distancia[indice], d_0, shadowing[i])
-            SNR[k] = power_rec[k]/p_n
-        SNR_sum = np.sum(SNR)
-        SNR_final.append(SNR_sum)
-    return SNR_final
+        j_ = np.argmax(path_g)
+        power_rec[i] = pot_rec(p_t, distancia[j_], d_0, shadowing[i])
+        SNR[i] = power_rec[i]/p_n
+    return SNR
 
-
-def calculate_capacity(B_t, p_t, d_0, K, M, N, passos, shadowing, cluster):
-    SNR = calculate_snr(B_t, p_t, d_0, K, M, N, passos, shadowing, cluster)
+def calculate_capacity(B_t, p_t, d_0, K, M, N, passos, shadowing):
+    SNR = calculate_snr(B_t, p_t, d_0, K, M, N, passos, shadowing)
     B_c = B_t/N
-    Capacity = np.zeros(passos)
-    for i in range(passos):
-        Capacity[i] = B_c * np.log2(1 + SNR[i])
-        
+    Capacity = B_c * np.log2(1 + SNR)
     return Capacity
 
 B_t, p_t, d_0, K_0 = 100e6, 1e3, 1, 1e-17 # Em MHz, mW, metros, mW/Hz respectivamente
 M, K, N = 100, 1, 1
 passos = 1000
-cluster = 1
 shadow = find_shadowing(passos)
-SNR = calculate_snr(B_t, p_t, d_0, K_0, M, N, passos, shadow, cluster)
-Capacity = calculate_capacity(B_t, p_t, d_0, K_0, M, N, passos, shadow, cluster)
+SNR = calculate_snr(B_t, p_t, d_0, K_0, M, N, passos, shadow)
+Capacity = calculate_capacity(B_t, p_t, d_0, K_0, M, N, passos, shadow)
 passos_array = np.arange(passos)
+cap = np.sort(Capacity)
 
 # Plota o número de passos no eixo x e a capacidade no eixo y
 plt.plot(passos_array, Capacity)

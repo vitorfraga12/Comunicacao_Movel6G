@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+# Função que gera as coordenadas dos APs
 def distribuir_APs(M):
     if M not in [1, 4, 9, 16, 25, 36, 49, 64, 100]:
         return None
@@ -18,6 +19,7 @@ def distribuir_APs(M):
 
     return coordenadas_APs
 
+# Função que gera a distância entre a UE e a AP
 def dAPUE(x_coord, y_coord, M):
   dAPUE = np.linalg.norm(np.array([x_coord, y_coord]) - M)
   return dAPUE
@@ -34,7 +36,7 @@ def find_shadowing(passos):
     return shadowing
 
 # Função que calcula a potência recebida
-def pot_rec(pot_trans, dist, d_0, shadowing):
+def find_pot_rec(pot_trans, dist, d_0, shadowing):
     k = 1e-4
     n = 4
     if dist >= d_0:
@@ -48,61 +50,71 @@ def calculate_snr(B_t, p_t, d_0, K_0, M, N, passos, shadowing):
     #UE irá se mover metro por metro e irá iniciar do ponto (0, 500) e irá até (1000, 500)
     x_coord = np.zeros(passos)
     y_coord = np.zeros(passos)
-    for i in range (passos):
-        x_coord[i] = (i+1)
-        y_coord[i] = 500 
+    for passo in range (passos):
+        x_coord[passo] = (passo+1)
+        y_coord[passo] = 500 
 
     ap_coord = distribuir_APs(M)
-    p_n = K_0*(B_t/N)
-    distancia = np.zeros(M)
+    power_noise = K_0*(B_t/N)
+    distance = np.zeros(M)
     power_rec = np.zeros(passos)
-    SNR = np.zeros(M)
-    SNR_final = []
+    snr = np.zeros(M)
+    snr_final = []
 
-    for i in range(passos):
-        for j in range(M):
-            distancia[j] = dAPUE(x_coord[i], y_coord[i], ap_coord[j])
-            power_rec[i] = pot_rec(p_t, distancia[j], d_0, shadowing[i])
-            SNR[j] = power_rec[i]/p_n
-        SNR_inter = np.sum(SNR)
-        SNR_final.append(SNR_inter)
+    for passo in range(passos):
+        for index_AP in range(M):
+            distance[index_AP] = dAPUE(x_coord[passo], y_coord[passo], ap_coord[index_AP])
+            power_rec[passo] = find_pot_rec(p_t, distance[index_AP], d_0, shadowing[passo])
+            snr[index_AP] = power_rec[passo]/power_noise
+        snr_inter = np.sum(snr)
+        snr_final.append(snr_inter)
         
-    return SNR_final
+    return snr_final
 
 def calculate_capacity(B_t, p_t, d_0, K_0, M, N, passos, shadowing):
-    SNR = calculate_snr(B_t, p_t, d_0, K_0, M, N, passos, shadowing)
-    B_c = B_t/N
-    Capacity = np.zeros(passos)
+    snr = calculate_snr(B_t, p_t, d_0, K_0, M, N, passos, shadowing)
+    b_c = B_t/N
+    capacity = np.zeros(passos)
     for i in range(passos):
-        Capacity[i] = B_c * np.log2(1 + SNR[i])
+        capacity[i] = b_c * np.log2(1 + snr[i])
         
-    return Capacity
-
+    return capacity
 
 B_t, p_t, d_0, K_0 = 100e6, 1e3, 1, 1e-17 # Em MHz, mW, metros, mW/Hz respectivamente
 M, K, N = 100, 1, 1 #Número de APs, UEs e Canais respectivamente
 
 passos = 1000
 shadow = find_shadowing(passos)
-SNR = calculate_snr(B_t, p_t, d_0, K_0, M, N, passos, shadow)
-Capacity = calculate_capacity(B_t, p_t, d_0, K_0, M, N, passos, shadow)
+snr = calculate_snr(B_t, p_t, d_0, K_0, M, N, passos, shadow)
+capacity = calculate_capacity(B_t, p_t, d_0, K_0, M, N, passos, shadow)
 passos_array = np.arange(passos)
-cap = np.sort(Capacity)
+cdf_capacity = np.sort(capacity)
 
-# Plota o número de passos no eixo x e a capacidade no eixo y
-plt.plot(passos_array, Capacity)
+# Plotando a Capacidade pela distância percorrida
+plt.plot(passos_array, capacity)
 plt.xlabel('Passos')
 plt.ylabel('Capacidade (bps)')
-plt.title('Capacidade da Rede 6G')
+plt.title('Capacidade da Rede Cellfree')
 plt.grid()
 plt.show()
 
-cap = np.sort(Capacity)
-
-# Plota o número de passos no eixo x e a capacidade no eixo y
-plt.plot(cap, np.arange(0, len(Capacity)) / len(Capacity))
+# Plotando a CDF da Capacidade
+plt.plot(cdf_capacity, np.arange(0, len(capacity)) / len(capacity))
 plt.xlabel('Capacidade (bps)')
 plt.ylabel('Porcentagem')
-plt.title('Capacidade da Rede 6G')
+plt.title('CDF da Capacidade da Rede Cellfree')
 plt.grid()
 plt.show()
+
+snr_db = 10*np.log10(snr)
+cdf_snr = np.sort(snr_db)
+
+# Plotando a CDF da SNR
+plt.plot(cdf_snr, np.arange(0, len(capacity)) / len(capacity))
+plt.xlabel('SNR (dB)')
+plt.ylabel('Porcentagem')
+plt.title('CDF da SNR da Rede Cellfree')
+plt.grid()
+plt.show()
+
+

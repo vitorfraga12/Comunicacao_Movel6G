@@ -36,7 +36,7 @@ def find_shadowing(passos):
     return shadowing
 
 # Função que calcula o path gain
-def path_gain(dist, shadowing):
+def find_path_gain(dist, shadowing):
     k = 1e-4
     n = 4
     path_gain_result = shadowing * (k / ((dist) ** n)) #Obtem o path_gain local de cada AP
@@ -44,7 +44,7 @@ def path_gain(dist, shadowing):
     return path_gain_result # [LINEAR]
 
 # Função que calcula a potência recebida
-def pot_rec(pot_trans, dist, d_0, shadowing):
+def find_pot_rec(pot_trans, dist, d_0, shadowing):
     k = 1e-4
     n = 4
     if dist >= d_0:
@@ -52,70 +52,79 @@ def pot_rec(pot_trans, dist, d_0, shadowing):
 
     return pot_rec_result # [LINEAR]
 
-
 def calculate_snr(B_t, p_t, d_0, K_0, M, N, passos, shadowing, cluster):
     #UE irá se mover metro por metro e irá iniciar do ponto (0, 500) e irá até (1000, 500)
     x_coord = np.zeros(passos)
     y_coord = np.zeros(passos)
-    for i in range (passos):
-        x_coord[i] = (i+1)
-        y_coord[i] = 500 
+    for passo in range (passos):
+        x_coord[passo] = (passo+1)
+        y_coord[passo] = 500 
 
     #Definindo váriaveis locais
     ap_coord = distribuir_APs(M)
-    p_n = K_0*(B_t/N)
-    distancia = np.zeros(M)
-    path_g = np.zeros(M)
+    power_noise = K_0*(B_t/N)
+    distance = np.zeros(M)
+    path_gain = np.zeros(M)
     power_rec = np.zeros(passos)
-    SNR = np.zeros(cluster)
-    SNR_final = []
+    snr = np.zeros(cluster)
+    snr_final = []
     
     #Fazendo o Handover
-    for i in range(passos):
-        for j in range(M):
-            distancia[j] = dAPUE(x_coord[i], y_coord[i], ap_coord[j])
-            path_g[j] = path_gain(distancia[j], shadowing[i])
-        j_ = np.argsort(path_g)[-cluster:][::-1]
-        for k in range(len(j_) ):
-            indice = j_[k]
-            power_rec[k] = pot_rec(p_t, distancia[indice], d_0, shadowing[i])
-            SNR[k] = power_rec[k]/p_n
-        SNR_sum = np.sum(SNR)
-        SNR_final.append(SNR_sum)
-    return SNR_final
+    for passo in range(passos):
+        for index_AP in range(M):
+            distance[index_AP] = dAPUE(x_coord[passo], y_coord[passo], ap_coord[index_AP])
+            path_gain[index_AP] = find_path_gain(distance[index_AP], shadowing[passo])
+        max_index = np.argsort(path_gain)[-cluster:][::-1]
+        for clust in range(len(max_index) ):
+            indice = max_index[clust]
+            power_rec[clust] = find_pot_rec(p_t, distance[indice], d_0, shadowing[passo])
+            snr[clust] = power_rec[clust]/power_noise
+        snr_sum = np.sum(snr)
+        snr_final.append(snr_sum)
+    return snr_final
 
 def calculate_capacity(B_t, p_t, d_0, K, M, N, passos, shadowing, cluster):
-    SNR = calculate_snr(B_t, p_t, d_0, K, M, N, passos, shadowing, cluster)
+    snr = calculate_snr(B_t, p_t, d_0, K, M, N, passos, shadowing, cluster)
     B_c = B_t/N
-    Capacity = np.zeros(passos)
+    capacity = np.zeros(passos)
     for i in range(passos):
-        Capacity[i] = B_c * np.log2(1 + SNR[i])
+        capacity[i] = B_c * np.log2(1 + snr[i])
         
-    return Capacity
+    return capacity
 
 B_t, p_t, d_0, K_0 = 100e6, 1e3, 1, 1e-17 # Em MHz, mW, metros, mW/Hz respectivamente
-M, K, N = 100, 1, 1
+ap, ue, channel = 100, 1, 1
 passos = 1000
 cluster = 1
 shadow = find_shadowing(passos)
-SNR = calculate_snr(B_t, p_t, d_0, K_0, M, N, passos, shadow, cluster)
-Capacity = calculate_capacity(B_t, p_t, d_0, K_0, M, N, passos, shadow, cluster)
+snr = calculate_snr(B_t, p_t, d_0, K_0, ap, channel, passos, shadow, cluster)
+capacity = calculate_capacity(B_t, p_t, d_0, K_0, ap, channel, passos, shadow, cluster)
 passos_array = np.arange(passos)
+cdf_capacity = np.sort(capacity)
 
-# Plota o número de passos no eixo x e a capacidade no eixo y
-plt.plot(passos_array, Capacity)
+# Plotando a Capacidade pela distância percorrida
+plt.plot(passos_array, capacity)
 plt.xlabel('Passos')
 plt.ylabel('Capacidade (bps)')
-plt.title('Capacidade da Rede 6G')
+plt.title('Capacidade da Rede Cellfree')
 plt.grid()
 plt.show()
 
-cap = np.sort(Capacity)
-
-# Plota o número de passos no eixo x e a capacidade no eixo y
-plt.plot(cap, np.arange(0, len(Capacity)) / len(Capacity))
+# Plotando a CDF da Capacidade
+plt.plot(cdf_capacity, np.arange(0, len(capacity)) / len(capacity))
 plt.xlabel('Capacidade (bps)')
 plt.ylabel('Porcentagem')
-plt.title('Capacidade da Rede 6G')
+plt.title('CDF da Capacidade da Rede Cellfree')
+plt.grid()
+plt.show()
+
+snr_db = 10*np.log10(snr)
+cdf_snr = np.sort(snr_db)
+
+# Plotando a CDF da SNR
+plt.plot(cdf_snr, np.arange(0, len(capacity)) / len(capacity))
+plt.xlabel('SNR (dB)')
+plt.ylabel('Porcentagem')
+plt.title('CDF da SNR da Rede Cellfree')
 plt.grid()
 plt.show()

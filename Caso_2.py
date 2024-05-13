@@ -62,7 +62,7 @@ def find_shadowing(passos):
 
     valor_atual = np.random.lognormal(0, 2)  # Inicializa o shadowing com sigma = 2 [LINEAR]
     for i in range(passos):
-        if (i) % 10 == 0 and i != 0:  # Atualiza o shadowing a cada 10 passos, exceto no passo 0
+        if (i) % 100 == 0 and i != 0:  # Atualiza o shadowing a cada 10 passos, exceto no passo 0
             valor_atual = np.random.lognormal(0, 2)
         shadowing.append(valor_atual)  # Adiciona o valor atual à lista
     return shadowing 
@@ -123,7 +123,7 @@ def calculate_snr(B_t, p_t, d_0, K_0, M, N, passos, shadowing, cluster):
     x_coord = np.zeros(passos)
     y_coord = np.zeros(passos)
     for passo in range (passos):
-        x_coord[passo] = (passo+1)
+        x_coord[passo] = (passo/10)
         y_coord[passo] = 500 
 
     #Definindo váriaveis locais
@@ -138,15 +138,15 @@ def calculate_snr(B_t, p_t, d_0, K_0, M, N, passos, shadowing, cluster):
     #Fazendo o Handover
     for passo in range(passos):
         for index_AP in range(M):
-            distance[index_AP] = dAPUE(x_coord[passo], y_coord[passo], ap_coord[index_AP])
-            path_gain[index_AP] = find_path_gain(distance[index_AP], shadowing[passo])
-        max_index = np.argsort(path_gain)[-cluster:][::-1]
+            distance[index_AP] = dAPUE(x_coord[passo], y_coord[passo], ap_coord[index_AP]) #Calcula a distância entre a UE e os APs para o instante de tempo atual
+            path_gain[index_AP] = find_path_gain(distance[index_AP], shadowing[passo]) #Calcula o path gain para o instante de tempo atual
+        max_index = np.argsort(path_gain)[-cluster:][::-1]#Pega os N index que tem o maior path gain, para assim calcular o SNR para esses N APs, onde N equivale ao cluster
         for clust in range(len(max_index) ):
             indice = max_index[clust]
             power_rec[clust] = find_pot_rec(p_t, distance[indice], d_0, shadowing[passo])
-            snr[clust] = power_rec[clust]/power_noise
-        snr_sum = np.sum(snr)
-        snr_final.append(snr_sum)
+            snr[clust] = power_rec[clust]/power_noise#Faz o cálculo das SNR que estão no cluster, fazendo assim o processo de handover
+        snr_sum = np.sum(snr) #Adequa ao cénario de Cell-Free, fazendo a soma das SNRs dos N APs
+        snr_final.append(snr_sum) #Adiciona a SNR final para cada instante de tempo
     return snr_final
 
 def max_cluster_number (M, passos, shadowing):
@@ -162,7 +162,7 @@ def max_cluster_number (M, passos, shadowing):
     x_coord = np.zeros(passos)
     y_coord = np.zeros(passos)
     for passo in range (passos):
-        x_coord[passo] = (passo+1)
+        x_coord[passo] = (passo/10)
         y_coord[passo] = 500 
 
     #Definindo váriaveis locais
@@ -209,7 +209,7 @@ def calculate_capacity(B_t, p_t, d_0, K, M, N, passos, shadowing, cluster):
 
 B_t, p_t, d_0, K_0 = 100e6, 1e3, 1, 1e-17 # Em MHz, mW, metros, mW/Hz respectivamente
 ap, ue, channel = 100, 1, 1
-passos = 1000 # Definido já que a UE irá se mover metro por metro
+passos = 10000 # Definido já que a UE irá se 10cm para cada iteração
 cluster = 100 # Informa com quantas APs a UE irá se comunicar  (Handover)
 shadow = find_shadowing(passos) # Definindo o shadowing
 snr = calculate_snr(B_t, p_t, d_0, K_0, ap, channel, passos, shadow, cluster)
@@ -244,7 +244,7 @@ plt.title('CDF da SNR da Rede Cellfree')
 plt.grid()
 plt.show()
 
-cluster1, cluster2, cluster3 = 1, 8, 100 # Informa com quantas APs a UE irá se comunicar  (Handover)
+cluster1, cluster2, cluster3 = 1, 3, 100 # Informa com quantas APs a UE irá se comunicar  (Handover)
 capacity1 = calculate_capacity(B_t, p_t, d_0, K_0, ap, channel, passos, shadow, cluster1)
 capacity2 = calculate_capacity(B_t, p_t, d_0, K_0, ap, channel, passos, shadow, cluster2)
 capacity3 = calculate_capacity(B_t, p_t, d_0, K_0, ap, channel, passos, shadow, cluster3)
@@ -274,7 +274,7 @@ plt.xlabel('Capacity (bps)')
 plt.ylabel('Percentage')
 plt.title('Capacity CDF of Cell-Free Network')
 plt.grid()
-#plt.savefig('cdf_capacity2.png')
+plt.savefig('cdf_capacity.pdf')
 plt.show()
 
 cluster1, cluster2, cluster3 = 1, 10, 100 # Informa com quantas APs a UE irá se comunicar  (Handover)

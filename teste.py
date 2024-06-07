@@ -39,7 +39,7 @@ a = find_shadowing(100)
 b = a[0] - a[9]
 print(b)'''
 
-import numpy as np
+'''import numpy as np
 
 # Sua lista ou array
 valores = np.array([1, 3, 2, 4, 5])
@@ -50,6 +50,8 @@ N = 3
 # Use np.argsort para ordenar os valores, e pegue os últimos N índices para os maiores valores
 indices_maiores = np.argsort(valores)[-N:][::-1]
 
-print(indices_maiores)
+print(indices_maiores)'''
+
+# Adicionando a seta com a diferença percentual no lado direito
 
 
